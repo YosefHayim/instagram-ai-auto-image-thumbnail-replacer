@@ -1,0 +1,17 @@
+const fs = require('fs');
+
+const sizes = [16, 32, 48, 128];
+
+const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#grad)"/>
+  <path d="M64 30L78 58L108 62L86 84L91 114L64 100L37 114L42 84L20 62L50 58Z" fill="white"/>
+</svg>`;
+
+fs.writeFileSync('assets/icon.svg', svgIcon);
+console.log('Created icon.svg');

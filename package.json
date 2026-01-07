@@ -1,0 +1,61 @@
+{
+  "name": "instagram-ai-optimizer",
+  "displayName": "Instagram AI Optimizer",
+  "version": "0.0.1",
+  "description": "AI-powered Instagram feed remastering extension with premium animations",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "@plasmohq/storage": "^1.15.0",
+    "@supabase/supabase-js": "^2.47.10",
+    "canvas-confetti": "^1.9.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "convex": "^1.31.2",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.469.0",
+    "plasmo": "^0.90.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@plasmohq/prettier-plugin-sort-imports": "^4.0.1",
+    "@types/canvas-confetti": "^1.6.4",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.10.4",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prettier": "^3.4.2",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  },
+  "manifest": {
+    "minimum_chrome_version": "88",
+    "background": {
+      "service_worker": "src/background.ts",
+      "type": "module"
+    },
+    "host_permissions": [
+      "https://www.instagram.com/*",
+      "https://instagram.com/*"
+    ],
+    "permissions": [
+      "storage",
+      "activeTab",
+      "tabs"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["https://www.instagram.com/*", "https://instagram.com/*"],
+        "run_at": "document_idle"
+      }
+    ]
+  }
+}
