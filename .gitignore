@@ -1,20 +1,39 @@
 # Dependencies
 node_modules
 
-# Environment
+# Environment - NEVER commit secrets!
 .env
 .env.local
+.env.development
+.env.production
+.env.*.local
+*.env
+!.env.example
+!backend/.env.example
+
+# Convex local state
+.convex
 
 # WXT build outputs
 .output
 .wxt
+.plasmo
 
-# Backend logs
+# Backend
 backend/logs
+backend/__pycache__
+backend/*.pyc
+backend/.env
+backend/.env.local
+
+# Supabase local
+supabase/.temp
 
 # Editor
 .vscode
 .idea
+*.swp
+*.swo
 
 # OS
 .DS_Store
@@ -23,3 +42,8 @@ Thumbs.db
 # Build artifacts
 dist
 build
+
+# Temporary files
+*.log
+*.tmp
+.cache
