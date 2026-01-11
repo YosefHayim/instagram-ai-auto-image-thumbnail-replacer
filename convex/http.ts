@@ -27,7 +27,7 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const body = await request.json()
-      const { image_url, user_prompt } = body
+      const { image_url, user_prompt, provider } = body
 
       if (!image_url || !user_prompt) {
         return new Response(
@@ -36,9 +36,19 @@ http.route({
         )
       }
 
+      // Validate provider if provided
+      const validProviders = ["replicate", "openai"]
+      if (provider && !validProviders.includes(provider)) {
+        return new Response(
+          JSON.stringify({ error: `Invalid provider. Must be one of: ${validProviders.join(", ")}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+      }
+
       const result = await ctx.runAction(api.chatEnhance.enhanceWithChat, {
         imageUrl: image_url,
         userPrompt: user_prompt,
+        provider: provider as "replicate" | "openai" | undefined,
       })
 
       return new Response(
@@ -54,6 +64,7 @@ http.route({
             directive: a.enhancementDirective,
           })),
           processing_time_ms: result.processingTimeMs,
+          provider: result.provider,
           error: result.error,
         }),
         {

@@ -12,6 +12,10 @@ import {
   type AgentAnalysis,
 } from "./ai/agents/specialists"
 import { forge } from "./ai/agents/forge"
+import { openaiForge } from "./ai/openai"
+
+// Provider type for image generation
+type ImageProvider = "replicate" | "openai"
 
 // Simple structured logging for Convex
 const log = {
@@ -40,6 +44,7 @@ export const enhanceWithChat = action({
   args: {
     imageUrl: v.string(),
     userPrompt: v.string(),
+    provider: v.optional(v.union(v.literal("replicate"), v.literal("openai"))),
   },
   handler: async (ctx, args): Promise<{
     success: boolean
@@ -48,33 +53,42 @@ export const enhanceWithChat = action({
     superPrompt?: string
     agentAnalyses?: AgentAnalysis[]
     processingTimeMs: number
+    provider: ImageProvider
     error?: string
   }> => {
     const startTime = Date.now()
+    const provider: ImageProvider = args.provider || "openai" // Default to OpenAI
 
     log.info("ChatEnhance", "Starting enhancement", {
       imageUrl: args.imageUrl.slice(0, 100),
       userPrompt: args.userPrompt,
+      provider,
     })
 
     const geminiApiKey = process.env.GEMINI_API_KEY
     const replicateApiKey = process.env.REPLICATE_API_TOKEN
+    const openaiApiKey = process.env.OPENAI_API_KEY
 
     log.debug("ChatEnhance", "Checking API keys", {
       hasGeminiKey: !!geminiApiKey,
       hasReplicateKey: !!replicateApiKey,
+      hasOpenAIKey: !!openaiApiKey,
     })
 
-    if (!geminiApiKey || !replicateApiKey) {
-      log.error("ChatEnhance", "Missing API keys", undefined, {
-        hasGeminiKey: !!geminiApiKey,
-        hasReplicateKey: !!replicateApiKey,
-      })
+    // Check required keys based on provider
+    const missingKeys: string[] = []
+    if (!geminiApiKey) missingKeys.push("GEMINI_API_KEY (for analysis)")
+    if (provider === "replicate" && !replicateApiKey) missingKeys.push("REPLICATE_API_TOKEN")
+    if (provider === "openai" && !openaiApiKey) missingKeys.push("OPENAI_API_KEY")
+
+    if (missingKeys.length > 0) {
+      log.error("ChatEnhance", "Missing API keys", undefined, { missingKeys })
       return {
         success: false,
         originalUrl: args.imageUrl,
-        error: "Missing API keys. Please configure GEMINI_API_KEY and REPLICATE_API_TOKEN in Convex environment variables.",
+        error: `Missing API keys: ${missingKeys.join(", ")}. Please configure in Convex environment variables.`,
         processingTimeMs: Date.now() - startTime,
+        provider,
       }
     }
 
@@ -113,31 +127,45 @@ export const enhanceWithChat = action({
       )
       console.log(`[ChatEnhance] Super-prompt: ${superPrompt.slice(0, 150)}...`)
 
-      // Generate enhanced image using forge
-      console.log("\n[ChatEnhance] Generating enhanced image...")
-      const enhancedUrl = await forge(
-        { imageUrl: args.imageUrl },
-        {
-          mainPrompt: superPrompt,
-          negativePrompt:
-            "blur, noise, artifacts, oversaturated, overexposed, underexposed, distorted, low quality",
-          styleModifiers: ["instagram-ready"],
-          contentTypeModifiers: [],
-          platformModifiers: ["feed"],
-          technicalParameters: {
-            strength: 0.4,
-            guidanceScale: 7.5,
-            steps: 30,
+      // Generate enhanced image using selected provider
+      console.log(`\n[ChatEnhance] Generating enhanced image with ${provider}...`)
+      let enhancedUrl: string
+
+      if (provider === "openai") {
+        // Use OpenAI's gpt-image-1 for image generation
+        enhancedUrl = await openaiForge(openaiApiKey!, {
+          imageUrl: args.imageUrl,
+          prompt: superPrompt,
+          model: "gpt-image-1",
+          quality: "high",
+          size: "1024x1024",
+        })
+      } else {
+        // Use Replicate/Flux for image generation
+        enhancedUrl = await forge(
+          { imageUrl: args.imageUrl },
+          {
+            mainPrompt: superPrompt,
+            negativePrompt:
+              "blur, noise, artifacts, oversaturated, overexposed, underexposed, distorted, low quality",
+            styleModifiers: ["instagram-ready"],
+            contentTypeModifiers: [],
+            platformModifiers: ["feed"],
+            technicalParameters: {
+              strength: 0.4,
+              guidanceScale: 7.5,
+              steps: 30,
+            },
+            model: "flux",
           },
-          model: "flux",
-        },
-        replicateApiKey
-      )
+          replicateApiKey!
+        )
+      }
 
       const processingTimeMs = Date.now() - startTime
 
       console.log("\n═══════════════════════════════════════════════════════════")
-      console.log(`[ChatEnhance] COMPLETE - ${(processingTimeMs / 1000).toFixed(1)}s`)
+      console.log(`[ChatEnhance] COMPLETE - ${(processingTimeMs / 1000).toFixed(1)}s (Provider: ${provider})`)
       console.log("═══════════════════════════════════════════════════════════")
 
       return {
@@ -147,6 +175,7 @@ export const enhanceWithChat = action({
         superPrompt,
         agentAnalyses: [composition, lighting, color, mood, detail],
         processingTimeMs,
+        provider,
       }
     } catch (error) {
       console.error("[ChatEnhance] Error:", error)
@@ -156,6 +185,7 @@ export const enhanceWithChat = action({
         originalUrl: args.imageUrl,
         error: error instanceof Error ? error.message : String(error),
         processingTimeMs: Date.now() - startTime,
+        provider,
       }
     }
   },

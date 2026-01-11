@@ -37,9 +37,15 @@ export function ImageGenerateButton({
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     console.log("🔘 [GenerateButton] React CLICKED! postId:", postId);
+    console.log("🔘 [GenerateButton] onClick function exists:", !!onClick);
+    console.log("🔘 [GenerateButton] onClick type:", typeof onClick);
     stopAllEvents(e);
-    onClick(postId, imageUrl);
-    console.log("🔘 [GenerateButton] onClick callback executed");
+    try {
+      onClick(postId, imageUrl);
+      console.log("🔘 [GenerateButton] onClick callback executed successfully");
+    } catch (err) {
+      console.error("🔘 [GenerateButton] onClick callback ERROR:", err);
+    }
   }, [postId, imageUrl, onClick, stopAllEvents]);
 
   React.useEffect(() => {
@@ -92,43 +98,65 @@ export function ImageGenerateButton({
     };
   }, [postId, imageUrl, onClick]);
 
-  // Use regular button instead of motion.button for more reliable ref handling
+  // Position button as a tag on the top-left, partially outside the image
   return (
     <button
       ref={buttonRef}
-      className={cn(
-        "absolute top-2 right-2 z-[999999]", // Maximum z-index
-        "flex items-center gap-1.5 px-3 py-2",
-        "bg-purple-600 backdrop-blur-md rounded-full",
-        "text-white text-sm font-bold",
-        "hover:bg-purple-500 transition-all duration-200",
-        "shadow-xl border-2 border-white",
-        "cursor-pointer",
-        "pointer-events-auto",
-        isProcessing && "opacity-50 pointer-events-none"
-      )}
+      data-ai-generate-btn={postId}
       style={{
         position: 'absolute',
         top: '8px',
-        right: '8px',
+        left: '-12px', // Half outside the image
         zIndex: 999999,
         pointerEvents: 'auto',
-        isolation: 'isolate', // Create new stacking context
+        isolation: 'isolate',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '6px 12px 6px 8px',
+        background: 'linear-gradient(135deg, #9333ea 0%, #c026d3 100%)',
+        borderRadius: '0 20px 20px 0', // Rounded on right side only (tag style)
+        color: 'white',
+        fontSize: '12px',
+        fontWeight: '700',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        border: 'none',
+        boxShadow: '0 4px 12px rgba(147, 51, 234, 0.4), 0 2px 4px rgba(0,0,0,0.1)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        opacity: isProcessing ? 0.6 : 1,
       }}
       onClick={handleClick}
       onMouseDown={(e) => stopAllEvents(e)}
       onPointerDown={(e) => stopAllEvents(e)}
       onTouchStart={(e) => stopAllEvents(e)}
       disabled={isProcessing}
+      onMouseEnter={(e) => {
+        if (!isProcessing) {
+          e.currentTarget.style.transform = 'translateX(4px)';
+          e.currentTarget.style.boxShadow = '0 6px 16px rgba(147, 51, 234, 0.5), 0 3px 6px rgba(0,0,0,0.15)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateX(0)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(147, 51, 234, 0.4), 0 2px 4px rgba(0,0,0,0.1)';
+      }}
     >
       {isProcessing ? (
         <div
-          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+          style={{
+            width: '14px',
+            height: '14px',
+            border: '2px solid rgba(255,255,255,0.3)',
+            borderTopColor: 'white',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
         />
       ) : (
-        <Wand2 className="w-4 h-4" />
+        <Wand2 style={{ width: '14px', height: '14px' }} />
       )}
-      <span>{isProcessing ? "..." : "Generate"}</span>
+      <span>{isProcessing ? "..." : "AI"}</span>
     </button>
   );
 }

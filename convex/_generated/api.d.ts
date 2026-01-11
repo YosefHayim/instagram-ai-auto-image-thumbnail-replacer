@@ -11,6 +11,7 @@
 import type * as ai_agents_forge from "../ai/agents/forge.js";
 import type * as ai_agents_specialists from "../ai/agents/specialists.js";
 import type * as ai_gemini from "../ai/gemini.js";
+import type * as ai_openai from "../ai/openai.js";
 import type * as chatEnhance from "../chatEnhance.js";
 import type * as http from "../http.js";
 import type * as optimizations from "../optimizations.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   "ai/agents/forge": typeof ai_agents_forge;
   "ai/agents/specialists": typeof ai_agents_specialists;
   "ai/gemini": typeof ai_gemini;
+  "ai/openai": typeof ai_openai;
   chatEnhance: typeof chatEnhance;
   http: typeof http;
   optimizations: typeof optimizations;

@@ -1,6 +1,12 @@
 // Convex URL for chat enhancement
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
 
+// Image generation provider type
+export type ImageProvider = "replicate" | "openai";
+
+// Default provider - OpenAI for best quality
+const DEFAULT_PROVIDER: ImageProvider = "openai";
+
 // Convex HTTP URL (derived from Convex URL)
 const getConvexHttpUrl = () => {
   if (!CONVEX_URL) {
@@ -25,6 +31,7 @@ interface ChatEnhanceResponse {
   super_prompt: string;
   agent_analyses: AgentAnalysis[];
   processing_time_ms: number;
+  provider: ImageProvider;
   error?: string;
 }
 
@@ -39,22 +46,44 @@ interface StreamingUpdate {
 }
 
 class APIClient {
+  // Current provider setting
+  private provider: ImageProvider = DEFAULT_PROVIDER;
+
+  /**
+   * Set the image generation provider
+   */
+  setProvider(provider: ImageProvider) {
+    this.provider = provider;
+    console.log("[APIClient] Provider set to:", provider);
+  }
+
+  /**
+   * Get current provider
+   */
+  getProvider(): ImageProvider {
+    return this.provider;
+  }
+
   /**
    * Enhance image with AI using chat-based prompt
    * Uses Convex backend with 5 parallel specialist agents
+   * @param provider - Optional override for the image generation provider
    */
   async enhanceWithPrompt(
     imageUrl: string,
     userPrompt: string,
+    provider?: ImageProvider,
   ): Promise<ChatEnhanceResponse> {
     const convexUrl = getConvexHttpUrl();
     const url = `${convexUrl}/api/agents/enhance`;
+    const activeProvider = provider || this.provider;
 
     console.log("[APIClient] enhanceWithPrompt called");
     console.log("[APIClient] Convex URL:", convexUrl);
     console.log("[APIClient] Full URL:", url);
     console.log("[APIClient] Image URL:", imageUrl.slice(0, 80) + "...");
     console.log("[APIClient] User prompt:", userPrompt);
+    console.log("[APIClient] Provider:", activeProvider);
 
     const response = await fetch(url, {
       method: "POST",
@@ -62,6 +91,7 @@ class APIClient {
       body: JSON.stringify({
         image_url: imageUrl,
         user_prompt: userPrompt,
+        provider: activeProvider,
       }),
     });
 
@@ -78,6 +108,7 @@ class APIClient {
       success: result.success,
       hasEnhancedUrl: !!result.enhanced_url,
       processingTimeMs: result.processing_time_ms,
+      provider: result.provider,
     });
     return result;
   }
@@ -85,14 +116,18 @@ class APIClient {
   /**
    * Enhance image with streaming progress updates
    * Simulates streaming by yielding progress stages while API processes
+   * @param provider - Optional override for the image generation provider
    */
   async *enhanceWithStream(
     imageUrl: string,
     userPrompt: string,
+    provider?: ImageProvider,
   ): AsyncGenerator<StreamingUpdate> {
+    const activeProvider = provider || this.provider;
     console.log("[APIClient] enhanceWithStream started");
     console.log("[APIClient] Image URL:", imageUrl.slice(0, 80) + "...");
     console.log("[APIClient] User prompt:", userPrompt);
+    console.log("[APIClient] Provider:", activeProvider);
 
     // Progress stages shown while waiting for API
     const stages = [
@@ -118,7 +153,7 @@ class APIClient {
     // Actually call the API
     try {
       console.log("[APIClient] Calling enhanceWithPrompt...");
-      const result = await this.enhanceWithPrompt(imageUrl, userPrompt);
+      const result = await this.enhanceWithPrompt(imageUrl, userPrompt, activeProvider);
       console.log("[APIClient] Got result, success:", result.success);
 
       if (result.success) {
@@ -200,4 +235,5 @@ export type {
   ChatEnhanceResponse,
   AgentAnalysis,
   StreamingUpdate,
+  ImageProvider,
 };

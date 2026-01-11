@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { LayoutGroup } from "framer-motion";
 
-import { ImageOverlay, type OverlayState } from "@/components/ImageOverlay";
+import { type OverlayState } from "@/components/ImageOverlay";
 import { ChatWindow } from "@/components/ChatWindow";
 import { BulkConfirmDialog } from "@/components/BulkConfirmDialog";
 import { BulkProgressBar, type BulkResult } from "@/components/BulkProgressBar";
@@ -110,6 +110,11 @@ function InstagramAIOptimizer() {
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [lastPrompt, setLastPrompt] = useState("");
 
+  // Debug: log chat state changes
+  useEffect(() => {
+    console.log("💬 [IG-AI] Chat state changed - isChatOpen:", isChatOpen, "selectedImage:", selectedImage?.postId);
+  }, [isChatOpen, selectedImage]);
+
   // Bulk state
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const {
@@ -186,17 +191,45 @@ function InstagramAIOptimizer() {
     };
   }, [isOnProfile]);
 
-  // Mount overlays on posts - now with "button" state by default
+  // Store handleGenerateClick in a ref so it's always current
+  const handleGenerateClickRef = useRef<(postId: string, imageUrl: string) => void>();
+
+  // Update ref when callback changes
   useEffect(() => {
+    handleGenerateClickRef.current = (postId: string, imageUrl: string) => {
+      console.log("🎯 [IG-AI] ========================================");
+      console.log("🎯 [IG-AI] handleGenerateClick CALLED via ref!");
+      console.log("🎯 [IG-AI] postId:", postId);
+      console.log("🎯 [IG-AI] imageUrl:", imageUrl.slice(0, 50));
+      setSelectedImage({ postId, url: imageUrl });
+      setIsChatOpen(true);
+      console.log("🎯 [IG-AI] State updated - chat should now be open");
+      console.log("🎯 [IG-AI] ========================================");
+    };
+  }, []);
+
+  // Mount overlays on posts - using pure DOM buttons for reliability
+  useEffect(() => {
+    console.log("🎯 [IG-AI] Mount overlays effect running, posts:", posts.length);
+
     posts.forEach((post) => {
       if (mountedOverlays.has(post.postId)) return;
 
       const container = post.element;
-      if (!container) return;
+      if (!container) {
+        console.log("🎯 [IG-AI] No container for post:", post.postId);
+        return;
+      }
 
       const existingOverlay = container.querySelector("[data-ai-overlay]");
-      if (existingOverlay) return;
+      if (existingOverlay) {
+        console.log("🎯 [IG-AI] Overlay already exists for post:", post.postId);
+        return;
+      }
 
+      console.log("🎯 [IG-AI] Creating overlay for post:", post.postId);
+
+      // Create overlay container
       const overlayContainer = document.createElement("div");
       overlayContainer.setAttribute("data-ai-overlay", post.postId);
       overlayContainer.style.cssText = `
@@ -207,88 +240,85 @@ function InstagramAIOptimizer() {
         bottom: 0;
         z-index: 999999;
         pointer-events: none;
-        isolation: isolate;
+        overflow: visible;
       `;
-      console.log("🎯 [IG-AI] Creating overlay container for post:", post.postId);
 
-      // Inject button styles directly since we're outside the shadow DOM
-      const styleEl = document.createElement("style");
-      styleEl.textContent = `
-        [data-ai-overlay] button {
-          position: absolute !important;
-          top: 8px !important;
-          right: 8px !important;
-          z-index: 999999 !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 6px !important;
-          padding: 8px 12px !important;
-          background: #9333ea !important;
-          backdrop-filter: blur(12px) !important;
-          border-radius: 9999px !important;
-          color: white !important;
-          font-size: 13px !important;
-          font-weight: 700 !important;
-          border: 2px solid white !important;
-          box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5) !important;
-          cursor: pointer !important;
-          pointer-events: auto !important;
-          transition: all 0.2s !important;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        }
-        [data-ai-overlay] button:hover {
-          background: #a855f7 !important;
-          transform: scale(1.05) !important;
-        }
-        [data-ai-overlay] button:active {
-          transform: scale(0.95) !important;
-        }
-        [data-ai-overlay] button svg {
-          width: 16px !important;
-          height: 16px !important;
-        }
-        [data-ai-overlay] button.processing {
-          opacity: 0.5 !important;
-          pointer-events: none !important;
-        }
+      // Ensure parent has relative positioning and visible overflow
+      container.style.position = "relative";
+      container.style.overflow = "visible";
+
+      // Create the button directly in DOM (bypassing React for reliability)
+      const button = document.createElement("button");
+      button.setAttribute("data-ai-generate-btn", post.postId);
+      button.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
+          <path d="m14 7 3 3"/>
+          <path d="M5 6v4"/>
+          <path d="M19 14v4"/>
+          <path d="M10 2v2"/>
+          <path d="M7 8H3"/>
+          <path d="M21 16h-4"/>
+          <path d="M11 3H9"/>
+        </svg>
+        <span>AI</span>
       `;
-      overlayContainer.appendChild(styleEl);
+      button.style.cssText = `
+        position: absolute;
+        top: 8px;
+        left: -12px;
+        z-index: 999999;
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px 6px 8px;
+        background: linear-gradient(135deg, #9333ea 0%, #c026d3 100%);
+        border-radius: 0 20px 20px 0;
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        border: none;
+        box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      `;
 
-      const parentStyle = window.getComputedStyle(container);
-      if (parentStyle.position === "static") {
-        container.style.position = "relative";
-      }
+      // Add click handler
+      button.addEventListener("click", (e) => {
+        console.log("🔘 [Button] CLICKED! postId:", post.postId);
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
+        if (handleGenerateClickRef.current) {
+          handleGenerateClickRef.current(post.postId, post.imageUrl);
+        } else {
+          console.error("🔘 [Button] handleGenerateClickRef is not set!");
+        }
+        return false;
+      }, true);
+
+      // Add hover effects
+      button.addEventListener("mouseenter", () => {
+        button.style.transform = "translateX(4px)";
+        button.style.boxShadow = "0 6px 16px rgba(147, 51, 234, 0.5)";
+      });
+      button.addEventListener("mouseleave", () => {
+        button.style.transform = "translateX(0)";
+        button.style.boxShadow = "0 4px 12px rgba(147, 51, 234, 0.4)";
+      });
+
+      overlayContainer.appendChild(button);
       container.appendChild(overlayContainer);
 
-      // Default to "button" state so Generate buttons appear
-      const state = postStates.get(post.postId) || {
-        state: "button" as OverlayState,
-      };
-
-      const root = createRoot(overlayContainer);
-
-      root.render(
-        <OverlayWrapper
-          post={post}
-          state={state}
-          onGenerateClick={handleGenerateClick}
-        />
-      );
+      console.log("🎯 [IG-AI] Button created and appended for post:", post.postId);
 
       setMountedOverlays((prev) => new Set(prev).add(post.postId));
     });
-  }, [posts, postStates]);
+  }, [posts]);
 
-  // Handle generate button click
-  const handleGenerateClick = useCallback((postId: string, imageUrl: string) => {
-    console.log("🎯 [IG-AI] handleGenerateClick called!");
-    console.log("🎯 [IG-AI] postId:", postId);
-    console.log("🎯 [IG-AI] imageUrl:", imageUrl.slice(0, 50));
-    setSelectedImage({ postId, url: imageUrl });
-    setIsChatOpen(true);
-    console.log("🎯 [IG-AI] Chat should now be open");
-  }, []);
 
   // Handle enhancement accept
   const handleAcceptEnhancement = useCallback(
