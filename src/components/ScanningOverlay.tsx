@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
-import { cn } from "~/lib/utils"
+import { cn } from "@/lib/utils"
 
 interface ScanningOverlayProps {
   isScanning: boolean

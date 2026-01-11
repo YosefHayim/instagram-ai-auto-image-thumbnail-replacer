@@ -11,7 +11,7 @@ import {
   Wind,
   ChevronDown,
 } from "lucide-react";
-import { cn, springConfig } from "~/lib/utils";
+import { cn, springConfig } from "@/lib/utils";
 
 export type StylePreset =
   | "cinematic"

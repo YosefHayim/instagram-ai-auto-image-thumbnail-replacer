@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Sparkles, Clock, Copy, Check, Lightbulb } from "lucide-react";
-import { cn, springConfig } from "~/lib/utils";
+import { cn, springConfig } from "@/lib/utils";
 
 interface CreatorInsightsProps {
   bestPostingTime: string;

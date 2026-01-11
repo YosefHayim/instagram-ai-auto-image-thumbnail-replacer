@@ -40,15 +40,7 @@ export interface CheckoutResponse {
 }
 
 export async function sendMessage<T>(message: MessageType): Promise<T> {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message))
-      } else {
-        resolve(response as T)
-      }
-    })
-  })
+  return browser.runtime.sendMessage(message) as Promise<T>
 }
 
 export async function getUserState(): Promise<UserState> {
@@ -91,18 +83,16 @@ export async function createCheckout(): Promise<CheckoutResponse> {
 }
 
 export function onMessage(
-  callback: (message: MessageType, sender: chrome.runtime.MessageSender) => void
+  callback: (message: MessageType, sender: browser.runtime.MessageSender) => void
 ): () => void {
   const listener = (
     message: MessageType,
-    sender: chrome.runtime.MessageSender,
-    sendResponse: (response?: unknown) => void
+    sender: browser.runtime.MessageSender
   ) => {
     callback(message, sender)
-    sendResponse({ received: true })
-    return true
+    return Promise.resolve({ received: true })
   }
 
-  chrome.runtime.onMessage.addListener(listener)
-  return () => chrome.runtime.onMessage.removeListener(listener)
+  browser.runtime.onMessage.addListener(listener)
+  return () => browser.runtime.onMessage.removeListener(listener)
 }

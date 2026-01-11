@@ -11,7 +11,7 @@ import {
   Download,
   Check,
 } from "lucide-react";
-import { cn, springConfig } from "~/lib/utils";
+import { cn, springConfig } from "@/lib/utils";
 import { StylePresetsGrid, type StylePreset } from "./StylePresetsGrid";
 import { CreatorInsights } from "./CreatorInsights";
 import { BeforeAfterSlider } from "./BeforeAfterSlider";

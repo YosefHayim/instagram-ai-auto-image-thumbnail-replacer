@@ -1,7 +1,7 @@
-import type { StylePreset } from "~/components/StylePresetsGrid";
+import type { StylePreset } from "@/components/StylePresetsGrid";
 
 const API_BASE_URL =
-  process.env.PLASMO_PUBLIC_API_URL || "http://localhost:8000";
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface EnhanceResponse {
   success: boolean;

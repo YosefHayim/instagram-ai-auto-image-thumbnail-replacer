@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import { cn, springConfig } from "~/lib/utils";
+import { cn, springConfig } from "@/lib/utils";
 
 interface FloatingActionButtonProps {
   onClick: () => void;

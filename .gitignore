@@ -1,4 +1,25 @@
-
-.env.local
+# Dependencies
 node_modules
+
+# Environment
+.env
+.env.local
+
+# WXT build outputs
+.output
+.wxt
+
+# Backend logs
 backend/logs
+
+# Editor
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist
+build

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { Lock } from "lucide-react"
-import { cn, springConfig } from "~/lib/utils"
+import { cn, springConfig } from "@/lib/utils"
 
 interface LockedOverlayProps {
   isLocked: boolean

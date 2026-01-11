@@ -3,7 +3,7 @@ import { useState } from "react"
 import { BeforeAfterSlider } from "./BeforeAfterSlider"
 import { ScanningOverlay } from "./ScanningOverlay"
 import { LockedOverlay } from "./LockedOverlay"
-import { cn, springConfig } from "~/lib/utils"
+import { cn, springConfig } from "@/lib/utils"
 
 export type OverlayState = "idle" | "scanning" | "ready" | "locked"
 
@@ -60,6 +60,7 @@ export function ImageOverlay({
               beforeImage={originalImage}
               afterImage={aiImage}
               onSlideComplete={handleSlideComplete}
+              showActions={false}
             />
           </motion.div>
         )}

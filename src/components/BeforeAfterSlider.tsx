@@ -7,7 +7,7 @@ import {
 } from "framer-motion";
 import { useRef, useState, useCallback } from "react";
 import { Check, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn, springConfig } from "~/lib/utils";
+import { cn, springConfig } from "@/lib/utils";
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
