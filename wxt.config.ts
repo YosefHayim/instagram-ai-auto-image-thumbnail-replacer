@@ -22,7 +22,8 @@ export default defineConfig({
       "https://www.googletagmanager.com/*",
     ],
     oauth2: {
-      client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+      client_id:
+        "627300886678-17evgd93f5rfk0qodpi8nve4u21vifcj.apps.googleusercontent.com",
       scopes: ["openid", "email", "profile"],
     },
     minimum_chrome_version: "88",

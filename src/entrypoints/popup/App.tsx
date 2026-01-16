@@ -49,20 +49,24 @@ function App() {
     return unsubscribe;
   }, []);
 
-  const fetchUserCredits = async (userId: string) => {
+  const fetchUserCredits = async (_userId: string) => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_CONVEX_URL}/api/query?path=users:getUserCredits`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ args: { userId } }),
-        },
-      );
+      const response = (await chrome.runtime.sendMessage({
+        type: "GET_USER_STATE",
+      })) as {
+        credits?: number;
+        isTrialActive?: boolean;
+        trialDaysRemaining?: number;
+        totalImagesEnhanced?: number;
+      } | null;
 
-      if (response.ok) {
-        const data = await response.json();
-        setCredits(data);
+      if (response) {
+        setCredits({
+          credits: response.credits ?? 0,
+          isTrialActive: response.isTrialActive ?? false,
+          trialDaysRemaining: response.trialDaysRemaining ?? 0,
+          totalImagesEnhanced: response.totalImagesEnhanced ?? 0,
+        });
       }
     } catch (err) {
       console.error("Failed to fetch credits:", err);
@@ -88,6 +92,7 @@ function App() {
 
   const handleSignOut = async () => {
     await auth.signOut();
+    await chrome.runtime.sendMessage({ type: "SIGN_OUT" });
     analytics.track("user_signed_out");
     setUser(null);
     setCredits(null);

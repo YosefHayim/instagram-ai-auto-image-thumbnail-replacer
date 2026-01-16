@@ -47,7 +47,17 @@ export default defineBackground(() => {
         type: "OPTIMIZE_IMAGE";
         payload: { imageUrl: string; stylePreset?: string };
       }
-    | { type: "CREATE_CHECKOUT" };
+    | { type: "CREATE_CHECKOUT" }
+    | {
+        type: "CREATE_CONVEX_USER";
+        payload: {
+          odch123: string;
+          email: string;
+          name?: string;
+          avatarUrl?: string;
+        };
+      }
+    | { type: "SIGN_OUT" };
 
   browser.runtime.onMessage.addListener(
     (message: unknown, _sender, sendResponse) => {
@@ -157,12 +167,27 @@ export default defineBackground(() => {
               });
               if (user) {
                 const hasSubscription = user.subscriptionStatus === "active";
+                const now = Date.now();
+                const isTrialExpired =
+                  user.freeTrialEndsAt && user.freeTrialEndsAt < now;
+                const trialDaysRemaining = user.freeTrialEndsAt
+                  ? Math.max(
+                      0,
+                      Math.ceil(
+                        (user.freeTrialEndsAt - now) / (24 * 60 * 60 * 1000),
+                      ),
+                    )
+                  : 0;
+
                 await storage.set("credits", user.credits);
                 await storage.set("isPremium", hasSubscription);
                 sendResponse({
                   isAuthenticated: true,
                   isPremium: hasSubscription,
                   credits: user.credits,
+                  isTrialActive: user.isTrialActive && !isTrialExpired,
+                  trialDaysRemaining,
+                  totalImagesEnhanced: user.totalImagesEnhanced,
                   odch123,
                 });
                 break;
@@ -183,6 +208,9 @@ export default defineBackground(() => {
             isAuthenticated: isAuthenticated ?? false,
             isPremium: isPremium ?? false,
             credits: isPremium ? -1 : (credits ?? 1),
+            isTrialActive: false,
+            trialDaysRemaining: 0,
+            totalImagesEnhanced: 0,
             odch123,
           });
           break;
@@ -259,6 +287,82 @@ export default defineBackground(() => {
             }
           }
           sendResponse({ error: "Stripe not configured" });
+          break;
+        }
+
+        case "CREATE_CONVEX_USER": {
+          const { odch123, email, name, avatarUrl } = message.payload;
+          console.log("[Instagram AI Optimizer] Creating Convex user:", email);
+
+          await storage.set("isAuthenticated", true);
+          await storage.set("odch123", odch123);
+
+          if (CONVEX_URL) {
+            try {
+              await convex.mutation(api.users.getOrCreateUser, {
+                odch123,
+                email,
+                name,
+                avatarUrl,
+              });
+
+              const user = await convex.query(api.users.getUserByOdch123, {
+                odch123,
+              });
+
+              if (user) {
+                const now = Date.now();
+                const isTrialExpired =
+                  user.freeTrialEndsAt && user.freeTrialEndsAt < now;
+                const trialDaysRemaining = user.freeTrialEndsAt
+                  ? Math.max(
+                      0,
+                      Math.ceil(
+                        (user.freeTrialEndsAt - now) / (24 * 60 * 60 * 1000),
+                      ),
+                    )
+                  : 0;
+
+                await storage.set("credits", user.credits);
+                await storage.set(
+                  "isPremium",
+                  user.subscriptionStatus === "active",
+                );
+
+                console.log(
+                  "[Instagram AI Optimizer] User created with",
+                  user.credits,
+                  "credits",
+                );
+
+                sendResponse({
+                  success: true,
+                  credits: user.credits,
+                  isTrialActive: user.isTrialActive && !isTrialExpired,
+                  trialDaysRemaining,
+                });
+                break;
+              }
+            } catch (e) {
+              console.error(
+                "[Instagram AI Optimizer] Failed to create Convex user:",
+                e,
+              );
+              sendResponse({ success: false, error: String(e) });
+              break;
+            }
+          }
+          sendResponse({ success: true, credits: 10 });
+          break;
+        }
+
+        case "SIGN_OUT": {
+          await storage.set("isAuthenticated", false);
+          await storage.set("odch123", null);
+          await storage.set("credits", 0);
+          await storage.set("isPremium", false);
+          console.log("[Instagram AI Optimizer] User signed out");
+          sendResponse({ success: true });
           break;
         }
 

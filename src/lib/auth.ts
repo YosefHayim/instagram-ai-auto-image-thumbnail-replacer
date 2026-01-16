@@ -1,16 +1,26 @@
 import { storage } from "wxt/storage";
+import { browser } from "wxt/browser";
 
 export interface AuthUser {
   id: string;
   email: string;
   name?: string;
   avatarUrl?: string;
+  convexUserId?: string;
 }
 
 interface AuthTokens {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
+}
+
+export interface ConvexUserResponse {
+  success: boolean;
+  credits?: number;
+  isTrialActive?: boolean;
+  trialDaysRemaining?: number;
+  error?: string;
 }
 
 const AUTH_STORAGE_KEY = "local:auth_user";
@@ -55,6 +65,24 @@ export const auth = {
 
           await storage.setItem(AUTH_STORAGE_KEY, user);
           await storage.setItem(TOKENS_STORAGE_KEY, tokens);
+
+          try {
+            const convexResponse = (await browser.runtime.sendMessage({
+              type: "CREATE_CONVEX_USER",
+              payload: {
+                odch123: user.id,
+                email: user.email,
+                name: user.name,
+                avatarUrl: user.avatarUrl,
+              },
+            })) as ConvexUserResponse;
+
+            if (convexResponse?.success) {
+              console.log("[Auth] Convex user created/updated successfully");
+            }
+          } catch (convexError) {
+            console.error("[Auth] Failed to create Convex user:", convexError);
+          }
 
           resolve(user);
         } catch (error) {
