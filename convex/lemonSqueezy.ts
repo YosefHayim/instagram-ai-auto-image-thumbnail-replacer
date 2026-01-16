@@ -217,6 +217,92 @@ function mapLemonSqueezyStatus(
   }
 }
 
+export const createCheckout = action({
+  args: {
+    userId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    credits: v.number(),
+    successUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
+    const storeId = process.env.LEMON_SQUEEZY_STORE_ID;
+    const variantId = process.env.LEMON_SQUEEZY_VARIANT_ID;
+
+    if (!apiKey || !storeId || !variantId) {
+      throw new Error("Lemon Squeezy configuration missing");
+    }
+
+    const checkoutData = {
+      data: {
+        type: "checkouts",
+        attributes: {
+          checkout_data: {
+            email: args.email,
+            name: args.name,
+            custom: {
+              user_id: args.userId,
+              credits: args.credits,
+            },
+          },
+          checkout_options: {
+            embed: false,
+            media: false,
+            logo: true,
+          },
+          product_options: {
+            enabled_variants: [parseInt(variantId)],
+            redirect_url:
+              args.successUrl || "https://www.instagram.com/?payment=success",
+          },
+        },
+        relationships: {
+          store: {
+            data: {
+              type: "stores",
+              id: storeId,
+            },
+          },
+          variant: {
+            data: {
+              type: "variants",
+              id: variantId,
+            },
+          },
+        },
+      },
+    };
+
+    const response = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(checkoutData),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Failed to create checkout";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.errors?.[0]?.detail || errorMessage;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return {
+      checkoutUrl: result.data.attributes.url,
+      orderId: result.data.id,
+    };
+  },
+});
+
 export const getPortalUrl = action({
   args: { userId: v.string() },
   handler: async (ctx, args) => {

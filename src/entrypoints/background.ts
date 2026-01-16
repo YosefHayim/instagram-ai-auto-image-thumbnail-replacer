@@ -3,7 +3,6 @@ import { api } from "../../convex/_generated/api";
 
 export default defineBackground(() => {
   const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || "";
-  const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID || "";
 
   const convex = new ConvexHttpClient(CONVEX_URL);
 
@@ -48,6 +47,20 @@ export default defineBackground(() => {
         payload: { imageUrl: string; stylePreset?: string };
       }
     | { type: "CREATE_CHECKOUT" }
+    | {
+        type: "CREATE_LEMON_SQUEEZY_CHECKOUT";
+        payload: {
+          userId: string;
+          email: string;
+          name?: string;
+          credits: number;
+          successUrl?: string;
+        };
+      }
+    | {
+        type: "GET_LEMON_SQUEEZY_PORTAL";
+        payload: { userId: string };
+      }
     | {
         type: "CREATE_CONVEX_USER";
         payload: {
@@ -258,35 +271,68 @@ export default defineBackground(() => {
           break;
         }
 
-        case "CREATE_CHECKOUT": {
-          const odch123 = await storage.get<string>("odch123");
-          if (!odch123) {
-            sendResponse({ error: "Not authenticated" });
+        case "CREATE_CHECKOUT":
+        case "CREATE_LEMON_SQUEEZY_CHECKOUT": {
+          if (!CONVEX_URL) {
+            sendResponse({ error: "Convex not configured" });
             break;
           }
-          if (CONVEX_URL && STRIPE_PRICE_ID) {
-            try {
-              const result = await convex.action(
-                api.stripe.createCheckoutSession,
-                {
-                  odch123,
-                  priceId: STRIPE_PRICE_ID,
-                  successUrl: "https://www.instagram.com/?payment=success",
-                  cancelUrl: "https://www.instagram.com/?payment=cancelled",
-                },
-              );
-              sendResponse(result);
-              break;
-            } catch (e) {
-              console.error(
-                "[Instagram AI Optimizer] Failed to create checkout:",
-                e,
-              );
-              sendResponse({ error: String(e) });
+
+          const payload =
+            message.type === "CREATE_LEMON_SQUEEZY_CHECKOUT"
+              ? message.payload
+              : null;
+
+          if (!payload) {
+            const odch123 = await storage.get<string>("odch123");
+            if (!odch123) {
+              sendResponse({ error: "Not authenticated" });
               break;
             }
+            sendResponse({ error: "Use CREATE_LEMON_SQUEEZY_CHECKOUT" });
+            break;
           }
-          sendResponse({ error: "Stripe not configured" });
+
+          try {
+            const result = await convex.action(
+              api.lemonSqueezy.createCheckout,
+              {
+                userId: payload.userId,
+                email: payload.email,
+                name: payload.name,
+                credits: payload.credits,
+                successUrl: payload.successUrl,
+              },
+            );
+            sendResponse(result);
+          } catch (e) {
+            console.error(
+              "[Instagram AI Optimizer] Failed to create checkout:",
+              e,
+            );
+            sendResponse({ error: String(e) });
+          }
+          break;
+        }
+
+        case "GET_LEMON_SQUEEZY_PORTAL": {
+          if (!CONVEX_URL) {
+            sendResponse({ error: "Convex not configured" });
+            break;
+          }
+
+          try {
+            const result = await convex.action(api.lemonSqueezy.getPortalUrl, {
+              userId: message.payload.userId,
+            });
+            sendResponse(result);
+          } catch (e) {
+            console.error(
+              "[Instagram AI Optimizer] Failed to get portal URL:",
+              e,
+            );
+            sendResponse({ error: String(e) });
+          }
           break;
         }
 

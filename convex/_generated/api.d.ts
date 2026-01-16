@@ -18,7 +18,6 @@ import type * as http from "../http.js";
 import type * as lemonSqueezy from "../lemonSqueezy.js";
 import type * as optimizations from "../optimizations.js";
 import type * as presets from "../presets.js";
-import type * as stripe from "../stripe.js";
 import type * as users from "../users.js";
 
 import type {
@@ -38,7 +37,6 @@ declare const fullApi: ApiFromModules<{
   lemonSqueezy: typeof lemonSqueezy;
   optimizations: typeof optimizations;
   presets: typeof presets;
-  stripe: typeof stripe;
   users: typeof users;
 }>;
 

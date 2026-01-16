@@ -1,14 +1,12 @@
 import { auth } from "./auth";
 import { analytics } from "./analytics";
 
-const LEMON_SQUEEZY_API_URL = "https://api.lemonsqueezy.com/v1";
 const CREDITS_PER_DOLLAR = 10;
 const CREDIT_PACKAGE_PRICE_CENTS = 100;
 
 interface CheckoutOptions {
   credits: number;
   successUrl?: string;
-  cancelUrl?: string;
 }
 
 interface CheckoutResponse {
@@ -28,83 +26,33 @@ export const lemonSqueezy = {
       throw new Error("User must be authenticated to create checkout");
     }
 
-    const variantId = import.meta.env.VITE_LEMON_SQUEEZY_VARIANT_ID;
-    const storeId = import.meta.env.VITE_LEMON_SQUEEZY_STORE_ID;
-
-    if (!variantId || !storeId) {
-      throw new Error("Lemon Squeezy configuration missing");
-    }
-
-    const quantity = Math.ceil(options.credits / CREDITS_PER_DOLLAR);
-    const extensionId = chrome.runtime.id;
-
-    const checkoutData = {
-      data: {
-        type: "checkouts",
-        attributes: {
-          checkout_data: {
-            email: user.email,
-            name: user.name,
-            custom: {
-              user_id: user.id,
-              credits: options.credits,
-            },
-          },
-          checkout_options: {
-            embed: false,
-            media: false,
-            logo: true,
-          },
-          product_options: {
-            enabled_variants: [parseInt(variantId)],
-            redirect_url:
-              options.successUrl ||
-              `chrome-extension://${extensionId}/popup.html?payment=success`,
-            receipt_link_url: `chrome-extension://${extensionId}/popup.html?receipt=true`,
-          },
-        },
-        relationships: {
-          store: {
-            data: {
-              type: "stores",
-              id: storeId,
-            },
-          },
-          variant: {
-            data: {
-              type: "variants",
-              id: variantId,
-            },
-          },
-        },
+    const response = await chrome.runtime.sendMessage({
+      type: "CREATE_LEMON_SQUEEZY_CHECKOUT",
+      payload: {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        credits: options.credits,
+        successUrl: options.successUrl,
       },
-    };
-
-    const response = await fetch(`${LEMON_SQUEEZY_API_URL}/checkouts`, {
-      method: "POST",
-      headers: {
-        Accept: "application/vnd.api+json",
-        "Content-Type": "application/vnd.api+json",
-        Authorization: `Bearer ${import.meta.env.VITE_LEMON_SQUEEZY_API_KEY}`,
-      },
-      body: JSON.stringify(checkoutData),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.errors?.[0]?.detail || "Failed to create checkout");
+    if (response.error) {
+      throw new Error(response.error);
     }
 
-    const result = await response.json();
-
-    analytics.track("checkout_created", {
-      credits: options.credits,
-      amount_cents: quantity * CREDIT_PACKAGE_PRICE_CENTS,
-    });
+    try {
+      analytics.track("checkout_created", {
+        credits: options.credits,
+        amount_cents:
+          Math.ceil(options.credits / CREDITS_PER_DOLLAR) *
+          CREDIT_PACKAGE_PRICE_CENTS,
+      });
+    } catch {}
 
     return {
-      checkoutUrl: result.data.attributes.url,
-      orderId: result.data.id,
+      checkoutUrl: response.checkoutUrl,
+      orderId: response.orderId,
     };
   },
 
@@ -115,21 +63,16 @@ export const lemonSqueezy = {
       throw new Error("User must be authenticated");
     }
 
-    const response = await fetch(
-      `${import.meta.env.VITE_CONVEX_URL}/lemonSqueezy/getPortalUrl`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
-      },
-    );
+    const response = await chrome.runtime.sendMessage({
+      type: "GET_LEMON_SQUEEZY_PORTAL",
+      payload: { userId: user.id },
+    });
 
-    if (!response.ok) {
-      throw new Error("Failed to get customer portal URL");
+    if (response.error) {
+      throw new Error(response.error);
     }
 
-    const result = await response.json();
-    return { portalUrl: result.portalUrl };
+    return { portalUrl: response.portalUrl };
   },
 
   openCheckout(checkoutUrl: string): void {
